@@ -1,5 +1,5 @@
 import os
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 import requests
 from dotenv import load_dotenv
 
@@ -11,6 +11,11 @@ app = Flask(__name__)
 # Constants - using os.environ.get is safer
 SARVAM_KEY = os.environ.get("SARVAM_KEY")
 OPENROUTER_KEY = os.environ.get("OPENROUTER_KEY")
+
+@app.route("/")
+def home():
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    return send_file(os.path.join(current_dir, "index.html"))
 
 @app.route("/api/translate", methods=["POST"])
 def translate():
