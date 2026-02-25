@@ -22,7 +22,7 @@ def translate():
     if not SARVAM_KEY:
         return jsonify({"error": "SARVAM_KEY not configured"}), 500
     data = request.json
-    url = "https://api.sarvam.ai/translate/v1"
+    url = "https://api.sarvam.ai/translate"
     headers = {"Content-Type": "application/json", "api-key": SARVAM_KEY}
     try:
         response = requests.post(url, json=data, headers=headers)
