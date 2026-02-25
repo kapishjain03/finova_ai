@@ -581,7 +581,7 @@
             body: JSON.stringify({ input: userText, source_language_code: selectedLangCode, target_language_code: 'en-IN', model: 'mayura:v1', enable_preprocessing: true })
           });
           const transData = await transRes.json();
-          if (transData.error) throw new Error('Translation failed: ' + transData.error);
+          if (transData.error) throw new Error('Translation failed: ' + (typeof transData.error === 'string' ? transData.error : JSON.stringify(transData.error)));
           englishQuestion = transData.translated_text || userText;
         }
 
@@ -622,7 +622,7 @@
             body: JSON.stringify({ input: englishAnswer, source_language_code: 'en-IN', target_language_code: selectedLangCode, model: 'mayura:v1', enable_preprocessing: true })
           });
           const transData2 = await transRes2.json();
-          if (transData2.error) throw new Error('Translation failed: ' + transData2.error);
+          if (transData2.error) throw new Error('Translation failed: ' + (typeof transData2.error === 'string' ? transData2.error : JSON.stringify(transData2.error)));
           translatedAnswer = transData2.translated_text || englishAnswer;
         }
 
