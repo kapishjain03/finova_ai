@@ -1,20 +1,8 @@
 {
   "rewrites": [
     {
-      "source": "/translate",
-      "destination": "/api/translate"
-    },
-    {
-      "source": "/ask",
-      "destination": "/api/ask"
-    },
-    {
-      "source": "/tts",
-      "destination": "/api/tts"
-    },
-    {
-      "source": "/stt",
-      "destination": "/api/stt"
+      "source": "/api/(.*)",
+      "destination": "/api/index"
     }
   ]
 }
