@@ -8,9 +8,9 @@ load_dotenv()
 
 app = Flask(__name__)
 
-# Constants - using os.environ.get is safer
-SARVAM_KEY = os.environ.get("SARVAM_KEY")
-OPENROUTER_KEY = os.environ.get("OPENROUTER_KEY")
+# Constants - using os.environ.get is safer and stripping removes trailing newlines
+SARVAM_KEY = os.environ.get("SARVAM_KEY", "").strip() or None
+OPENROUTER_KEY = os.environ.get("OPENROUTER_KEY", "").strip() or None
 
 @app.route("/")
 def home():
