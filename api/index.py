@@ -23,7 +23,7 @@ def translate():
         return jsonify({"error": "SARVAM_KEY not configured"}), 500
     data = request.json
     url = "https://api.sarvam.ai/translate"
-    headers = {"Content-Type": "application/json", "api-key": SARVAM_KEY}
+    headers = {"Content-Type": "application/json", "api-subscription-key": SARVAM_KEY}
     try:
         response = requests.post(url, json=data, headers=headers)
         return jsonify(response.json())
@@ -63,7 +63,7 @@ def tts():
         return jsonify({"error": "SARVAM_KEY not configured"}), 500
     data = request.json
     url = "https://api.sarvam.ai/text-to-speech"
-    headers = {"Content-Type": "application/json", "api-key": SARVAM_KEY}
+    headers = {"Content-Type": "application/json", "api-subscription-key": SARVAM_KEY}
     try:
         response = requests.post(url, json=data, headers=headers)
         return jsonify(response.json())
@@ -81,7 +81,7 @@ def stt():
     language_code = request.form.get('language_code', 'hi-IN')
     
     url = "https://api.sarvam.ai/speech-to-text"
-    headers = {"api-key": SARVAM_KEY}
+    headers = {"api-subscription-key": SARVAM_KEY}
     
     files = {'file': (file.filename, file.stream, file.mimetype)}
     data = {'language_code': language_code}
