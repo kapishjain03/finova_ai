@@ -74,36 +74,103 @@ def ask():
 def tts():
     if not SARVAM_KEY:
         return jsonify({"error": "SARVAM_KEY not configured"}), 500
-    data = request.json
-    url = "https://api.sarvam.ai/text-to-speech"
-    headers = {"Content-Type": "application/json", "api-subscription-key": SARVAM_KEY}
-    try:
-        response = requests.post(url, json=data, headers=headers)
-        return jsonify(response.json())
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    body = request.json
+    raw_inputs = body.get('inputs', [])
+    target_lang = body.get('target_language_code', 'hi-IN')
+    speaker = body.get('speaker', 'ritu')
+
+    # Sarvam TTS has a ~500 char per-input limit. Split long text into chunks.
+    MAX_CHARS = 480
+    chunked_inputs = []
+    for text in raw_inputs:
+        if len(text) <= MAX_CHARS:
+            chunked_inputs.append(text)
+        else:
+            # Split at sentence boundaries (। or . or | followed by space)
+            import re
+            sentences = re.split(r'(?<=[।.।|])\s+', text)
+            current_chunk = ''
+            for sentence in sentences:
+                if len(current_chunk) + len(sentence) + 1 <= MAX_CHARS:
+                    current_chunk = (current_chunk + ' ' + sentence).strip()
+                else:
+                    if current_chunk:
+                        chunked_inputs.append(current_chunk)
+                    # If a single sentence is still too long, just add it as-is
+                    current_chunk = sentence
+            if current_chunk:
+                chunked_inputs.append(current_chunk)
+
+    all_audios = []
+    for chunk in chunked_inputs:
+        clean_body = {
+            'inputs': [chunk],
+            'target_language_code': target_lang,
+            'speaker': speaker,
+            'model': 'bulbul:v3',
+            'speech_sample_rate': 22050,
+            'enable_preprocessing': True,
+            'pace': 0.9
+        }
+        try:
+            resp = requests.post(
+                'https://api.sarvam.ai/text-to-speech',
+                headers={'Content-Type': 'application/json', 'api-subscription-key': SARVAM_KEY},
+                json=clean_body,
+                timeout=30
+            )
+            data = resp.json()
+            if resp.status_code != 200:
+                print(f"TTS error: {data}")
+                return jsonify(data), resp.status_code
+            if data.get('audios'):
+                all_audios.extend(data['audios'])
+        except requests.exceptions.Timeout:
+            return jsonify({'error': 'Text-to-speech request timed out'}), 504
+        except Exception as e:
+            return jsonify({'error': f'Text-to-speech failed: {str(e)}'}), 500
+
+    # Combine all audio chunks — client will play the first one
+    # For simplicity, concatenate base64 WAV data (all same format)
+    if all_audios:
+        # Return all chunks; client plays first, we could concatenate but
+        # returning the first chunk is simpler and works for auto-play
+        import base64
+        combined = b''
+        for i, audio_b64 in enumerate(all_audios):
+            raw = base64.b64decode(audio_b64)
+            if i == 0:
+                combined = raw  # first chunk includes WAV header
+            else:
+                combined += raw[44:]  # skip WAV header on subsequent chunks
+        combined_b64 = base64.b64encode(combined).decode('utf-8')
+        return jsonify({'audios': [combined_b64]}), 200
+    else:
+        return jsonify({'error': 'No audio generated'}), 500
 
 @app.route("/api/stt", methods=["POST"])
 def stt():
     if not SARVAM_KEY:
         return jsonify({"error": "SARVAM_KEY not configured"}), 500
-    if 'file' not in request.files:
-        return jsonify({"error": "No file part"}), 400
-    
-    file = request.files['file']
-    language_code = request.form.get('language_code', 'hi-IN')
-    
-    url = "https://api.sarvam.ai/speech-to-text"
-    headers = {"api-subscription-key": SARVAM_KEY}
-    
-    files = {'file': (file.filename, file.stream, file.mimetype)}
-    data = {'language_code': language_code}
-    
+    audio_file = request.files.get('file')
+    lang = request.form.get('language_code', 'hi-IN')
+    if not audio_file:
+        return jsonify({"error": "No audio file provided"}), 400
     try:
-        response = requests.post(url, files=files, data=data, headers=headers)
-        return jsonify(response.json())
+        resp = requests.post(
+            'https://api.sarvam.ai/speech-to-text',
+            headers={'api-subscription-key': SARVAM_KEY},
+            files={'file': (audio_file.filename, audio_file.read(), audio_file.content_type)},
+            data={'language_code': lang, 'model': 'saarika:v2'},
+            timeout=30
+        )
+        data = resp.json()
+        print("STT status:", resp.status_code, "| response:", data)
+        return jsonify(data), resp.status_code
+    except requests.exceptions.Timeout:
+        return jsonify({'error': 'Speech-to-text request timed out'}), 504
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({'error': f'Speech-to-text failed: {str(e)}'}), 500
 
 if __name__ == "__main__":
     app.run(port=5000)
